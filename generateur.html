@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Générateur inventaire RCO</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.27.0/moment-with-locales.min.js"></script>
+    <script src="https://unpkg.com/papaparse@latest/papaparse.min.js"></script>
+    <link href="https://unpkg.com/tabulator-tables@latest/dist/css/tabulator.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/tabulator-tables@latest/dist/js/tabulator.min.js"></script>
+    <style>
+        html,
+        body {
+            margin: 0;
+            background: white;
+            height: 100%;
+        }
+
+        .content {
+            height: 100%;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="content">
+        <form class="parametres no-print">
+            <input type="file" name="inventaire" id="inventaire" accept="text/csv" required>
+            <select name="type_doc" id="type-doc">
+                <option value="repertoire">Répertoire trimestriel</option>
+                <option value="liste">Liste Globale</option>
+            </select>
+            <input type="text" name="collection" id="collection" placeholder="Nom de la collection" required>
+            <label for="last-inventaire">
+                <input type="date" name="last-inventaire" id="last-inventaire">
+            </label>
+            <label for="vigueur-uniquement">Documents en vigueur uniquement
+                <input type="checkbox" name="vigueur-uniquement" id="vigueur-uniquement" checked>
+            </label>
+            <button type="submit" id="valider">Générer</button>
+        </form>
+        <button id="impression">Imprimer les éléments visibles</button>
+        <button id="impression-selection">Imprimer sélection</button>
+        <div id="table"></div>
+    </div>
+    <script>
+        moment.locale('fr');
+
+        let table = null
+        document.getElementById('impression').addEventListener('click', (e) => {
+            e.preventDefault()
+            table.print(true, true)
+        })
+        document.getElementById('impression-selection').addEventListener('click', (e) => {
+            e.preventDefault()
+            table.print("selected", false, false)
+        })
+        class Texte {
+            constructor(texte) {
+                this.reference = texte["Référence"]
+                this.ref_precedente = texte["Référence précédente"]
+                this.date_chgt = moment(texte["Date du changement"], "DD/MM/YYYY").toDate()
+                this.ancienne_reference = texte["Ancienne référence"]
+                this.index = texte["Index utilisateur"]
+                this.titre = texte["Titre"]
+                this.nature = texte["Nature"]
+                this.emetteur = texte["Émetteur"]
+                this.contact = texte["Contact"]
+                this.precision_emetteur = texte["Précision émetteur"]
+                this.securite = texte["SEF et/ou SST"]
+                this.date_edition = moment(texte["Date d'édition"], "DD/MM/YYYY").toDate()
+                this.version = texte["Version"]
+                this.rectif_abrogatoire = texte["Rectificatif abrogatoire"] === "Oui" ? true : false
+                this.date_version = moment(texte["Date version"], "DD/MM/YYYY").toDate()
+                this.etat = texte["Etat"]
+                this.date_application = moment(texte["Date d'application"], "DD/MM/YYYY").toDate()
+                this.quantite_papier = texte["Qté papier distribuée"]
+                this.quantite_intranet = texte["Qté Intranet distribuée"]
+                this.media = texte["Media distribué"]
+                this.date_der_enreg_distri = moment(texte["Date dernier enreg. de distribution"], "DD/MM/YYYY").toDate()
+                this.date_enreg_reception_ua = moment(texte["Date enreg. qté reçue dans l'Ua"], "DD/MM/YYYY").toDate()
+                this.date_ar_gdoc = moment(texte["Date AR par le Gdoc"], "DD/MM/YYYY").toDate()
+                this.date_ar_rco = moment(texte["Date AR pour la collection"], "DD/MM/YYYY").toDate()
+                this.signataire = texte["Signataire"]
+                this.lien = texte["Lien vers le texte actuel"]
+                this.commentaires = ""
+                this.okReception = true
+            }
+            estApplicable() {
+                return this.etat === "Vigueur" && this.rectif_abrogatoire === false
+            }
+            getEtat() {
+                return this.estApplicable ? this.etat : this.rectif_abrogatoire === true ? "Abrogé" : this.etat
+            }
+            getClassement() {
+                return this.index.split(' ', 2).join(' ')
+            }
+        }
+        function dateFormatter(cell, formatterParams, onRendered) {
+            if (!cell.getValue()) { return "" }
+            const date = cell.getValue().toLocaleDateString()
+            if (date === "Invalid Date") {
+                console.log(date)
+                return "Dès réception"
+            }
+            return date
+        }
+
+        function getHeader() {
+            return `<h1>${document.querySelector('#type-doc option:checked').textContent}<h1><h3>Collection ${document.querySelector('#collection').value}</h3>`
+        }
+        function getFooter() {
+            return `<h4>${document.querySelector('#type-doc option:checked').textContent} généré le ${moment().format("LLLL")}</h4>`
+        }
+        function ChargementTableau(indexes, values) {
+            let elems = null
+            if (document.querySelector("#vigueur-uniquement").checked === false) {
+                elems = values
+            } else {
+                elems = values.filter(val => val.estApplicable())
+            }
+            table = new Tabulator("#table", {
+                groupBy: "index",
+                reactiveData: true,
+                data: elems,
+                columns: [
+                    { title: "Référence", field: "reference", sorter: "alphanum", headerFilter: true, print: true, titlePrint: "Réf.", search: true },
+                    { title: "Index", field: "index", sorter: "string", visible: false, print: true },
+                    { title: "Titre", field: "titre", sorter: "string", headerFilter: true, print: true, widthGrow: 5 },
+                    { title: "Version", field: "version", sorter: "number", print: true, widthShrink: 1 },
+                    {
+                        title: "Dates",
+                        columns: [
+                            {
+                                title: "Version", field: "date_version", formatter: dateFormatter, sorter: ((a, b, aRow, bRow, column, dir, sorterParams) => a - b), print: true
+                            },
+                            {
+                                title: "Edition", field: "date_edition", formatter: dateFormatter, sorter: ((a, b, aRow, bRow, column, dir, sorterParams) => a - b), print: true
+                            },
+                            {
+                                title: "Application", field: "date_application", formatter: dateFormatter, sorter: ((a, b, aRow, bRow, column, dir, sorterParams) => a - b), print: false
+                            },
+                        ]
+                    },
+                    { title: "Nb ex. Papier", field: "quantite_papier", sorter: "number", print: true, bottomCalc: "sum" },
+                    { title: "Nb ex. Démat.", field: "quantite_intranet", sorter: "number", print: true, bottomCalc: "sum" },
+                    { title: "Réception", field: "okReception", hozAlign: "center", editor: true, formatter: "tickCross", titlePrint: "AR" },
+
+                ],
+                placeholder: "Aucun élément disponible",
+                pagination: "local",
+                initialSort: [
+                    { column: "index", dir: "asc" }
+                ],
+                movableColumns: true,
+                paginationSize: 25,
+                paginationSizeSelector: [25, 50, 100, 250, true],
+                printAsHtml: true,
+                printHeader: getHeader(),
+                printFooter: getFooter(),
+                layout: "fitColumns",
+                printStyled: true,
+                selectable: true,
+                tabEndNewRow: true,
+                selectablePersistence: true,
+                locale: true,
+                langs: {
+                    "fr": {
+                        "columns": {
+                            "nom": "Nom", //replace the title of column name with the value "Name"
+                        },
+                        "ajax": {
+                            "loading": "Chargement", //ajax loader text
+                            "error": "Erreur", //ajax error text
+                        },
+                        "groups": { //copy for the auto generated item count in group header
+                            "item": "élément", //the singular  for item
+                            "items": "éléments", //the plural for items
+                        },
+                        "pagination": {
+                            "page_size": "Taille de page", //label for the page size select element
+                            "page_title": "Voir Page",//tooltip text for the numeric page button, appears in front of the page number (eg. "Show Page" will result in a tool tip of "Show Page 1" on the page 1 button)
+                            "first": "Première", //text for the first page button
+                            "first_title": "Première Page", //tooltip text for the first page button
+                            "last": "Dernière",
+                            "last_title": "Dernière Page",
+                            "prev": "Préc.",
+                            "prev_title": "Page Préc.",
+                            "next": "Suivant",
+                            "next_title": "Page Suiv.",
+                            "all": "Tout",
+                        },
+                        "headerFilters": {
+                            "default": "filtrer par colonne", //default header filter placeholder text
+                            "columns": {
+                                "name": "filtrer par nom", //replace default header filter text for column name
+                            }
+                        }
+                    }
+                },
+            });
+            table.addColumn({
+                title: "Commentaires RCO", editor: "textarea", field: "commentaires", editorParams: {
+                    verticalNavigation: "editor"
+                }
+            })
+        }
+        const lancer = document.querySelector('#valider')
+        lancer.addEventListener('click', (e) => {
+            e.preventDefault()
+            document.getElementsByTagName('form')[0].hidden = true
+            const reader = new FileReader()
+
+            const inventaire = document.querySelector('#inventaire')
+            reader.readAsText(inventaire.files[0], 'Windows-1252')
+
+            const tbl = []
+            const indexes = new Map()
+
+            reader.onload = function () {
+                Papa.parse(reader.result, {
+                    header: true,
+                    dynamicTyping: true,
+                    complete: function (results) {
+                        results.data.forEach(result => {
+                            if (result.Référence !== null) {
+                                let t = new Texte(result)
+                                let i = t.getClassement()
+                                indexes.set(i, i)
+                                tbl.push(t)
+                            }
+                        })
+                        ChargementTableau(Array.from(indexes.values()).sort(), tbl)
+                    }
+                })
+            };
+
+            reader.onerror = function () {
+                console.log(reader.error);
+            };
+
+        })
+
+    </script>
+</body>
+
+</html>

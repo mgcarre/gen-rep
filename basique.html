@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventaire</title>
+    <script src="https://unpkg.com/papaparse@5.2.0/papaparse.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Parisienne&family=Ubuntu&display=swap');
+
+        body {
+            font-family: 'Ubuntu', sans-serif;
+            font-size: 1em;
+            text-align: center;
+        }
+
+        #titre,
+        #sous-titre {
+            font-family: 'Parisienne', cursive;
+        }
+
+        table {
+            width: 100%;
+        }
+
+        table,
+        th,
+        td {
+            border: 1px solid black;
+            border-collapse: collapse;
+            text-align: center;
+        }
+
+        th[scope="row"] {
+            background: red;
+            color: white;
+            border: none;
+        }
+
+        .abroge {
+            background-color: darksalmon;
+        }
+
+        .futur {
+            background-color: aquamarine;
+        }
+
+        .texte-barre {
+            text-decoration: line-through;
+        }
+
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <form class="parametres no-print">
+        <input type="file" name="inventaire" id="inventaire" accept="text/csv" required>
+        <select name="type_doc" id="type-doc">
+            <option value="repertoire">Répertoire trimestriel</option>
+            <option value="liste">Liste Globale</option>
+        </select>
+        <input type="text" name="collection" id="collection" placeholder="Nom de la collection" required>
+        <label for="last-inventaire">
+            <input type="date" name="last-inventaire" id="last-inventaire">
+        </label>
+        <label for="vigueur-uniquement">Documents en vigueur uniquement
+            <input type="checkbox" name="vigueur-uniquement" id="vigueur-uniquement" checked>
+        </label>
+        <button type="submit" id="valider">Générer</button>
+    </form>
+    <page size="A4" layout="landscape">
+        <h2 id="titre"></h2>
+        <h4 id="sous-titre"></h4>
+        <table>
+            <thead>
+                <tr>
+                    <th>Référence</th>
+                    <th>Index</th>
+                    <th style="width: 45%;">Titre</th>
+                    <th>Date d'édition</th>
+                    <th>Version</th>
+                    <th>Date de version</th>
+                    <th>Date d'application</th>
+                    <th>Exemplaires</th>
+                    <th>P / I</th>
+                    <th class="no-print">Avis Gdoc</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </page>
+    <script>
+        class Texte {
+            constructor(texte) {
+                this.reference = texte["Référence"]
+                this.ref_precedente = texte["Référence précédente"]
+                this.date_chgt = new Date(texte["Date du changement"])
+                this.ancienne_reference = texte["Ancienne référence"]
+                this.index = texte["Index utilisateur"]
+                this.titre = texte["Titre"]
+                this.nature = texte["Nature"]
+                this.emetteur = texte["Émetteur"]
+                this.contact = texte["Contact"]
+                this.precision_emetteur = texte["Précision émetteur"]
+                this.securite = texte["SEF et/ou SST"]
+                this.date_edition = new Date(texte["Date d'édition"])
+                this.version = texte["Version"]
+                this.rectif_abrogatoire = texte["Rectificatif abrogatoire"] === "Oui" ? true : false
+                this.date_version = new Date(texte["Date version"])
+                this.etat = texte["Etat"]
+                this.date_application = new Date(texte["Date d'application"])
+                this.quantite_papier = texte["Qté papier distribuée"]
+                this.quantite_intranet = texte["Qté Intranet distribuée"]
+                this.media = texte["Media distribué"]
+                this.date_der_enreg_distri = new Date(texte["Date dernier enreg. de distribution"])
+                this.date_enreg_reception_ua = new Date(texte["Date enreg. qté reçue dans l'Ua"])
+                this.date_ar_gdoc = new Date(texte["Date AR par le Gdoc"])
+                this.date_ar_rco = new Date(texte["Date AR pour la collection"])
+                this.signataire = texte["Signataire"]
+                this.lien = texte["Lien vers le texte actuel"]
+            }
+            estApplicable() {
+                return this.etat === "Vigueur" && this.rectif_abrogatoire === false
+            }
+            getClassement() {
+                return this.index.split(' ', 2).join(' ')
+            }
+        }
+
+        function EffacerTableau() {
+            const tbody = document.querySelector('tbody')
+            tbody.innerHTML = ""
+        }
+        function CreerLigneTitreTableau(index, textes) {
+            const tbody = document.querySelector('tbody')
+            const ligne = document.createElement('tr')
+            const lHeader = document.createElement('th')
+            lHeader.scope = 'row'
+            lHeader.colSpan = '10'
+            lHeader.innerText = index
+            ligne.appendChild(lHeader)
+            tbody.appendChild(ligne)
+            textes.forEach(texte => CreerLigneTexteTableau(texte))
+        }
+        function CreerLigneTexteTableau(texte) {
+            if (document.querySelector("#vigueur-uniquement").checked === true && !texte.estApplicable()) {
+                return
+            }
+            const tbody = document.querySelector('tbody')
+            const ligne = document.createElement('tr')
+            const lRef = document.createElement('td')
+            lRef.innerText = texte.reference
+            ligne.appendChild(lRef)
+            const lIndex = document.createElement('td')
+            lIndex.innerText = texte.index
+            ligne.appendChild(lIndex)
+            const lTitre = document.createElement('td')
+            lTitre.innerText = texte.titre
+            ligne.appendChild(lTitre)
+            const ldEd = document.createElement('td')
+            ldEd.innerText = texte.date_edition.toLocaleDateString()
+            ligne.appendChild(ldEd)
+            const lVersion = document.createElement('td')
+            lVersion.innerText = texte.version
+            ligne.appendChild(lVersion)
+            const ldVers = document.createElement('td')
+            ldVers.innerText = texte.date_version.toLocaleDateString()
+            ligne.appendChild(ldVers)
+            const ldAppl = document.createElement('td')
+            ldAppl.innerText = texte.date_application == "Invalid Date" ? "Dès réception" : texte.date_application.toLocaleDateString()
+            ligne.appendChild(ldAppl)
+            const lQ = document.createElement('td')
+            lQ.innerHTML = "Papier = " + texte.quantite_papier + "<br>" + "Numérique = " + texte.quantite_intranet
+            ligne.appendChild(lQ)
+            const cBox = document.createElement('input')
+            cBox.type = "checkbox"
+            if (texte.quantite_papier == 0) {
+                cBox.disabled = true
+            }
+            const cBoxbis = document.createElement('input')
+            cBoxbis.type = "checkbox"
+            if (texte.quantite_intranet == 0) {
+                cBoxbis.disabled = true
+            }
+            const lVide = document.createElement('td')
+            lVide.appendChild(cBox)
+            lVide.appendChild(cBoxbis)
+            ligne.appendChild(lVide)
+            const avis = document.createElement('td')
+            avis.innerHTML = `->`
+            avis.classList.add('no-print')
+            ligne.appendChild(avis)
+            if (texte.rectif_abrogatoire) {
+                ligne.classList.add('abroge')
+            }
+            if (texte.etat === "Futur") {
+                ligne.classList.add('futur')
+            }
+            tbody.appendChild(ligne)
+        }
+        function ChargementTableau(indexes, textes) {
+            EffacerTableau()
+            indexes.forEach(index => {
+                let docs = textes.filter(texte => texte.getClassement() === index)
+                CreerLigneTitreTableau(index, docs.sort((a, b) => (a.index > b.index) ? 1 : ((b.index > a.index) ? -1 : 0)))
+            })
+        }
+        const inventaire = document.querySelector('#valider')
+        inventaire.addEventListener('click', (e) => {
+            e.preventDefault()
+            const reader = new FileReader()
+
+            const fileInput = document.querySelector('#inventaire')
+            reader.readAsText(fileInput.files[0], 'Windows-1252')
+
+            document.querySelector('#titre').innerText = document.querySelector('#type-doc option:checked').textContent
+            document.querySelector('#sous-titre').innerText = "Collection " + document.querySelector('#collection').value
+            const tbl = []
+            const indexes = new Map()
+
+            reader.onload = function () {
+                Papa.parse(reader.result, {
+                    header: true,
+                    dynamicTyping: true,
+                    complete: function (results) {
+                        results.data.forEach(result => {
+                            if (result.Référence !== null) {
+                                let t = new Texte(result)
+                                let i = t.getClassement()
+                                indexes.set(i, i)
+                                tbl.push(t)
+                            }
+                        })
+                        ChargementTableau(Array.from(indexes.values()).sort(), tbl)
+                    }
+                })
+            };
+
+            reader.onerror = function () {
+                console.log(reader.error);
+            };
+
+        })
+
+
+    </script>
+</body>
+
+</html>
