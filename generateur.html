@@ -10,8 +10,11 @@
     <link href="https://unpkg.com/tabulator-tables@latest/dist/css/tabulator.min.css" rel="stylesheet">
     <script src="https://unpkg.com/tabulator-tables@latest/dist/js/tabulator.min.js"></script>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Quicksand&display=swap');
+
         html,
         body {
+            font-family: 'Quicksand', sans-serif;
             margin: 0;
             background: white;
             height: 100%;
@@ -20,19 +23,23 @@
         .content {
             height: 100%;
         }
+
+        #tableau-content {
+            visibility: hidden;
+        }
     </style>
 </head>
 
 <body>
     <div class="content">
-        <form class="parametres no-print">
+        <form class="parametres no-print" id="form-tableau">
             <input type="file" name="inventaire" id="inventaire" accept="text/csv" required>
             <select name="type_doc" id="type-doc">
                 <option value="repertoire">Répertoire trimestriel</option>
                 <option value="liste">Liste Globale</option>
             </select>
             <input type="text" name="collection" id="collection" placeholder="Nom de la collection" required>
-            <label for="last-inventaire">
+            <label for="last-inventaire" hidden>
                 <input type="date" name="last-inventaire" id="last-inventaire">
             </label>
             <label for="vigueur-uniquement">Documents en vigueur uniquement
@@ -40,13 +47,15 @@
             </label>
             <button type="submit" id="valider">Générer</button>
         </form>
-        <button id="impression">Imprimer les éléments visibles</button>
-        <button id="impression-selection">Imprimer sélection</button>
-        <div id="table"></div>
+        <div id="tableau-content">
+            <button id="impression">Imprimer les éléments visibles</button>
+            <button id="impression-selection">Imprimer sélection</button>
+            <div id="table"></div>
+        </div>
     </div>
     <script>
         moment.locale('fr');
-
+        const dateFormat = "DD/MM/YYYY"
         let table = null
         document.getElementById('impression').addEventListener('click', (e) => {
             e.preventDefault()
@@ -60,7 +69,7 @@
             constructor(texte) {
                 this.reference = texte["Référence"]
                 this.ref_precedente = texte["Référence précédente"]
-                this.date_chgt = moment(texte["Date du changement"], "DD/MM/YYYY").toDate()
+                this.date_chgt = moment(texte["Date du changement"], dateFormat).toDate()
                 this.ancienne_reference = texte["Ancienne référence"]
                 this.index = texte["Index utilisateur"]
                 this.titre = texte["Titre"]
@@ -69,19 +78,19 @@
                 this.contact = texte["Contact"]
                 this.precision_emetteur = texte["Précision émetteur"]
                 this.securite = texte["SEF et/ou SST"]
-                this.date_edition = moment(texte["Date d'édition"], "DD/MM/YYYY").toDate()
+                this.date_edition = moment(texte["Date d'édition"], dateFormat).toDate()
                 this.version = texte["Version"]
                 this.rectif_abrogatoire = texte["Rectificatif abrogatoire"] === "Oui" ? true : false
-                this.date_version = moment(texte["Date version"], "DD/MM/YYYY").toDate()
+                this.date_version = moment(texte["Date version"], dateFormat).toDate()
                 this.etat = texte["Etat"]
-                this.date_application = moment(texte["Date d'application"], "DD/MM/YYYY").toDate()
+                this.date_application = moment(texte["Date d'application"], dateFormat).toDate()
                 this.quantite_papier = texte["Qté papier distribuée"]
                 this.quantite_intranet = texte["Qté Intranet distribuée"]
                 this.media = texte["Media distribué"]
-                this.date_der_enreg_distri = moment(texte["Date dernier enreg. de distribution"], "DD/MM/YYYY").toDate()
-                this.date_enreg_reception_ua = moment(texte["Date enreg. qté reçue dans l'Ua"], "DD/MM/YYYY").toDate()
-                this.date_ar_gdoc = moment(texte["Date AR par le Gdoc"], "DD/MM/YYYY").toDate()
-                this.date_ar_rco = moment(texte["Date AR pour la collection"], "DD/MM/YYYY").toDate()
+                this.date_der_enreg_distri = moment(texte["Date dernier enreg. de distribution"], dateFormat).toDate()
+                this.date_enreg_reception_ua = moment(texte["Date enreg. qté reçue dans l'Ua"], dateFormat).toDate()
+                this.date_ar_gdoc = moment(texte["Date AR par le Gdoc"], dateFormat).toDate()
+                this.date_ar_rco = moment(texte["Date AR pour la collection"], dateFormat).toDate()
                 this.signataire = texte["Signataire"]
                 this.lien = texte["Lien vers le texte actuel"]
                 this.commentaires = ""
@@ -99,12 +108,12 @@
         }
         function dateFormatter(cell, formatterParams, onRendered) {
             if (!cell.getValue()) { return "" }
-            const date = cell.getValue().toLocaleDateString()
-            if (date === "Invalid Date") {
-                console.log(date)
+            const date = moment(cell.getValue())
+            if (!date.isValid()) {
+                console.log(cell.getValue())
                 return "Dès réception"
             }
-            return date
+            return date.format(dateFormat)
         }
 
         function getHeader() {
@@ -126,26 +135,26 @@
                 data: elems,
                 columns: [
                     { title: "Référence", field: "reference", sorter: "alphanum", headerFilter: true, print: true, titlePrint: "Réf.", search: true },
-                    { title: "Index", field: "index", sorter: "string", visible: false, print: true },
-                    { title: "Titre", field: "titre", sorter: "string", headerFilter: true, print: true, widthGrow: 5 },
-                    { title: "Version", field: "version", sorter: "number", print: true, widthShrink: 1 },
+                    { title: "Index", field: "index", sorter: "string", visible: false, print: true, widthGrow: 3 },
+                    { title: "Titre", field: "titre", sorter: "string", headerFilter: true, print: true, widthGrow: 6 },
+                    { title: "Version", field: "version", sorter: "number", hozAlign: "center", print: true, widthShrink: 1 },
                     {
                         title: "Dates",
                         columns: [
                             {
-                                title: "Version", field: "date_version", formatter: dateFormatter, sorter: ((a, b, aRow, bRow, column, dir, sorterParams) => a - b), print: true
+                                title: "Version", field: "date_version", hozAlign: "center", formatter: dateFormatter, sorter: ((a, b, aRow, bRow, column, dir, sorterParams) => a - b), print: true
                             },
                             {
-                                title: "Edition", field: "date_edition", formatter: dateFormatter, sorter: ((a, b, aRow, bRow, column, dir, sorterParams) => a - b), print: true
+                                title: "Edition", field: "date_edition", hozAlign: "center", formatter: dateFormatter, sorter: ((a, b, aRow, bRow, column, dir, sorterParams) => a - b), print: true
                             },
                             {
-                                title: "Application", field: "date_application", formatter: dateFormatter, sorter: ((a, b, aRow, bRow, column, dir, sorterParams) => a - b), print: false
+                                title: "Application", field: "date_application", hozAlign: "center", formatter: dateFormatter, sorter: ((a, b, aRow, bRow, column, dir, sorterParams) => a - b), print: true, hozAlign: "center"
                             },
                         ]
                     },
-                    { title: "Nb ex. Papier", field: "quantite_papier", sorter: "number", print: true, bottomCalc: "sum" },
-                    { title: "Nb ex. Démat.", field: "quantite_intranet", sorter: "number", print: true, bottomCalc: "sum" },
-                    { title: "Réception", field: "okReception", hozAlign: "center", editor: true, formatter: "tickCross", titlePrint: "AR" },
+                    { title: "Nb ex. Papier", field: "quantite_papier", sorter: "number", print: true, bottomCalc: "sum", hozAlign: "center" },
+                    { title: "Nb ex. Démat.", field: "quantite_intranet", sorter: "number", print: true, bottomCalc: "sum", hozAlign: "center" },
+                    { title: "Réception", field: "okReception", hozAlign: "center", editor: true, formatter: "tickCross", print: false },
 
                 ],
                 placeholder: "Aucun élément disponible",
@@ -156,7 +165,7 @@
                 movableColumns: true,
                 paginationSize: 25,
                 paginationSizeSelector: [25, 50, 100, 250, true],
-                printAsHtml: true,
+                printAsHtml: false,
                 printHeader: getHeader(),
                 printFooter: getFooter(),
                 layout: "fitColumns",
@@ -209,7 +218,8 @@
         const lancer = document.querySelector('#valider')
         lancer.addEventListener('click', (e) => {
             e.preventDefault()
-            document.getElementsByTagName('form')[0].hidden = true
+            document.getElementById('form-tableau').hidden = true
+            document.getElementById('tableau-content').style.visibility = "visible"
             const reader = new FileReader()
 
             const inventaire = document.querySelector('#inventaire')
