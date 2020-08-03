@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Générateur inventaire RCO</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.27.0/moment-with-locales.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@latest/moment.min.js"></script>
     <script src="https://unpkg.com/papaparse@latest/papaparse.min.js"></script>
     <link href="https://unpkg.com/tabulator-tables@latest/dist/css/tabulator.min.css" rel="stylesheet">
     <script src="https://unpkg.com/tabulator-tables@latest/dist/js/tabulator.min.js"></script>
@@ -55,7 +55,9 @@
     </div>
     <script>
         moment.locale('fr');
-        const dateFormat = "DD/MM/YYYY"
+        const dateFormat = new Map()
+        dateFormat.set("slash", "DD/MM/YYYY")
+        dateFormat.set("tiret", "YYYY-MM-DD")
         let table = null
         document.getElementById('impression').addEventListener('click', (e) => {
             e.preventDefault()
@@ -65,11 +67,24 @@
             e.preventDefault()
             table.print("selected", false, false)
         })
+        const planClassement = {
+            "AG": "Affaires générales",
+            "AG+AS": "Approvisionnement et stocks, Marchés et Achats",
+            "CL": "Commercial",
+            "EF": "Equipements fixes",
+            "FC": "Finances et comptabilité",
+            "MG": "Matériel et outillage",
+            "MR": "Matériel roulant",
+            "OG": "Organisation et gestion",
+            "PS": "Personnel et questions sociales",
+            "S": "Sécurité de la circulation",
+            "TR": "Trafic et Exploitation"
+        }
         class Texte {
             constructor(texte) {
                 this.reference = texte["Référence"]
                 this.ref_precedente = texte["Référence précédente"]
-                this.date_chgt = moment(texte["Date du changement"], dateFormat).toDate()
+                this.date_chgt = this.getDateFormatted(texte["Date du changement"])
                 this.ancienne_reference = texte["Ancienne référence"]
                 this.index = texte["Index utilisateur"]
                 this.titre = texte["Titre"]
@@ -78,19 +93,19 @@
                 this.contact = texte["Contact"]
                 this.precision_emetteur = texte["Précision émetteur"]
                 this.securite = texte["SEF et/ou SST"]
-                this.date_edition = moment(texte["Date d'édition"], dateFormat).toDate()
+                this.date_edition = this.getDateFormatted(texte["Date d'édition"])
                 this.version = texte["Version"]
                 this.rectif_abrogatoire = texte["Rectificatif abrogatoire"] === "Oui" ? true : false
-                this.date_version = moment(texte["Date version"], dateFormat).toDate()
+                this.date_version = this.getDateFormatted(texte["Date version"])
                 this.etat = texte["Etat"]
-                this.date_application = moment(texte["Date d'application"], dateFormat).toDate()
+                this.date_application = this.getDateFormatted(texte["Date d'application"])
                 this.quantite_papier = texte["Qté papier distribuée"]
                 this.quantite_intranet = texte["Qté Intranet distribuée"]
                 this.media = texte["Media distribué"]
-                this.date_der_enreg_distri = moment(texte["Date dernier enreg. de distribution"], dateFormat).toDate()
-                this.date_enreg_reception_ua = moment(texte["Date enreg. qté reçue dans l'Ua"], dateFormat).toDate()
-                this.date_ar_gdoc = moment(texte["Date AR par le Gdoc"], dateFormat).toDate()
-                this.date_ar_rco = moment(texte["Date AR pour la collection"], dateFormat).toDate()
+                this.date_der_enreg_distri = this.getDateFormatted(texte["Date dernier enreg. de distribution"])
+                this.date_enreg_reception_ua = this.getDateFormatted(texte["Date enreg. qté reçue dans l'Ua"])
+                this.date_ar_gdoc = this.getDateFormatted(texte["Date AR par le Gdoc"])
+                this.date_ar_rco = this.getDateFormatted(texte["Date AR pour la collection"])
                 this.signataire = texte["Signataire"]
                 this.lien = texte["Lien vers le texte actuel"]
                 this.commentaires = ""
@@ -102,8 +117,19 @@
             getEtat() {
                 return this.estApplicable ? this.etat : this.rectif_abrogatoire === true ? "Abrogé" : this.etat
             }
-            getClassement() {
-                return this.index.split(' ', 2).join(' ')
+            getClassement(position = 2, pdc = false) {
+                const elem = this.index.split(' ', position).join(' ')
+                if (pdc === true) {
+                    return `${planClassement[elem]} (${elem})`
+                }
+                return elem
+            }
+            getDateFormatted(date) {
+                if (!date || date === null) {
+                    return null
+                }
+                const re = date.includes("/") ? moment(date, dateFormat.get("slash")) : moment(date, dateFormat.get("tiret"))
+                return re.toDate()
             }
         }
         function dateFormatter(cell, formatterParams, onRendered) {
@@ -113,7 +139,7 @@
                 console.log(cell.getValue())
                 return "Dès réception"
             }
-            return date.format(dateFormat)
+            return date.format("DD/MM/YYYY")
         }
 
         function getHeader() {
@@ -130,7 +156,7 @@
                 elems = values.filter(val => val.estApplicable())
             }
             table = new Tabulator("#table", {
-                groupBy: "index",
+                groupBy: [(data) => data.getClassement(1, true), (data) => data.getClassement(3)],
                 reactiveData: true,
                 data: elems,
                 columns: [
@@ -163,7 +189,7 @@
                     { column: "index", dir: "asc" }
                 ],
                 movableColumns: true,
-                paginationSize: 25,
+                paginationSize: true,
                 paginationSizeSelector: [25, 50, 100, 250, true],
                 printAsHtml: false,
                 printHeader: getHeader(),
