@@ -9,6 +9,7 @@
     <script src="https://unpkg.com/papaparse@latest/papaparse.min.js"></script>
     <link href="https://unpkg.com/tabulator-tables@latest/dist/css/tabulator.min.css" rel="stylesheet">
     <script src="https://unpkg.com/tabulator-tables@latest/dist/js/tabulator.min.js"></script>
+    <script type="text/javascript" src="https://oss.sheetjs.com/sheetjs/xlsx.full.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Quicksand&display=swap');
 
@@ -45,11 +46,19 @@
             <label for="vigueur-uniquement">Documents en vigueur uniquement
                 <input type="checkbox" name="vigueur-uniquement" id="vigueur-uniquement" checked>
             </label>
+            <label for="date_format">
+                <select name="date_format" id="date_format">
+                    <option value="" disabled>Format de date</option>
+                    <option value="DD/MM/YYYY">JJ/MM/AAAA</option>
+                    <option value="DD-MM-YYYY" selected>JJ-MM-AAAA</option>
+                </select>
+            </label>
             <button type="submit" id="valider">Générer</button>
         </form>
         <div id="tableau-content">
             <button id="impression">Imprimer les éléments visibles</button>
             <button id="impression-selection">Imprimer sélection</button>
+            <button id="telecharger">Télécharger</button>
             <div id="table"></div>
         </div>
     </div>
@@ -66,6 +75,10 @@
         document.getElementById('impression-selection').addEventListener('click', (e) => {
             e.preventDefault()
             table.print("selected", false, false)
+        })
+        document.getElementById('telecharger').addEventListener('click', (e) => {
+            e.preventDefault()
+            table.download("xlsx", "data.xls", { sheetName: "MyData" });
         })
         const planClassement = {
             "AG": "Affaires générales",
@@ -139,7 +152,7 @@
                 console.log(cell.getValue())
                 return "Dès réception"
             }
-            return date.format("DD/MM/YYYY")
+            return date.format(document.getElementById("date_format").value)
         }
 
         function getHeader() {
@@ -161,7 +174,7 @@
                 data: elems,
                 columns: [
                     { title: "Référence", field: "reference", sorter: "alphanum", headerFilter: true, print: true, titlePrint: "Réf.", search: true },
-                    { title: "Index", field: "index", sorter: "string", visible: false, print: true, widthGrow: 3 },
+                    { title: "Index", field: "index", sorter: "string", visible: false, print: true, download: true, widthGrow: 3 },
                     { title: "Titre", field: "titre", sorter: "string", headerFilter: true, print: true, widthGrow: 6 },
                     { title: "Version", field: "version", sorter: "number", hozAlign: "center", print: true, widthShrink: 1 },
                     {
@@ -178,9 +191,9 @@
                             },
                         ]
                     },
-                    { title: "Nb ex. Papier", field: "quantite_papier", sorter: "number", print: true, bottomCalc: "sum", hozAlign: "center" },
-                    { title: "Nb ex. Démat.", field: "quantite_intranet", sorter: "number", print: true, bottomCalc: "sum", hozAlign: "center" },
-                    { title: "Réception", field: "okReception", hozAlign: "center", editor: true, formatter: "tickCross", print: false },
+                    { title: "Nb ex. Papier", field: "quantite_papier", sorter: "number", download: false, print: true, bottomCalc: "sum", hozAlign: "center" },
+                    { title: "Nb ex. Démat.", field: "quantite_intranet", sorter: "number", download: false, print: true, bottomCalc: "sum", hozAlign: "center" },
+                    { title: "Réception", field: "okReception", hozAlign: "center", editor: true, formatter: "tickCross", download: false, print: false },
 
                 ],
                 placeholder: "Aucun élément disponible",
@@ -236,7 +249,7 @@
                 },
             });
             table.addColumn({
-                title: "Commentaires RCO", editor: "textarea", field: "commentaires", editorParams: {
+                title: "Commentaires RCO", editor: "textarea", field: "commentaires", download: false, editorParams: {
                     verticalNavigation: "editor"
                 }
             })
