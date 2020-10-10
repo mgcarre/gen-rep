@@ -11,6 +11,7 @@
     <script src="https://unpkg.com/tabulator-tables@latest/dist/js/tabulator.min.js"></script>
     <script type="text/javascript" src="https://oss.sheetjs.com/sheetjs/xlsx.full.min.js"></script>
     <script src="https://unpkg.com/dexie@latest/dist/dexie.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/semantic-ui@2.4.2/dist/semantic.min.css">
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Quicksand&display=swap');
@@ -29,56 +30,87 @@
 
         }
 
-        .content {
-            height: 100%;
-        }
-
         #tableau-content {
             visibility: hidden;
-        }
-
-        #telecharger {
-            background-color: orange;
-            border-radius: 5px;
         }
     </style>
 </head>
 
 <body>
-    <div class="content">
-        <form class="parametres no-print" id="form-tableau">
-            <input type="file" name="inventaire" id="inventaire" accept="text/csv" required>
-            <select name="type_doc" id="type-doc">
-                <option value="repertoire">Répertoire trimestriel</option>
-                <option value="liste">Liste Globale</option>
-            </select>
-            <label for="collection">
-                <select name="collection" id="collection">
-                    <option value="0" disabled selected>Sélectionner une collection</option>
-                </select>
-            </label>
-            <label for="last-inventaire" hidden>
-                <input type="date" name="last-inventaire" id="last-inventaire">
-            </label>
-            <label for="vigueur-uniquement">Documents en vigueur uniquement
-                <input type="checkbox" name="vigueur-uniquement" id="vigueur-uniquement" checked>
-            </label>
-            <label for="date_format">
-                <select name="date_format" id="date_format">
-                    <option value="" disabled>Format de date</option>
-                    <option value="DD/MM/YYYY">JJ/MM/AAAA</option>
-                    <option value="DD-MM-YYYY" selected>JJ-MM-AAAA</option>
-                </select>
-            </label>
-            <button type="submit" id="valider">Générer</button>
-            <button type="button" id="charger" disabled>Récupérer mes données enregistrées</button>
-        </form>
-        <div id="tableau-content">
-            <button id="impression">Imprimer les éléments visibles</button>
-            <button id="impression-selection">Imprimer sélection</button>
-            <button id="telecharger">Télécharger</button>
-            <div id="table"></div>
+    <div class="ui container">
+        <div class="row">
+            <form class="ui form no-print" id="form-tableau">
+                <h3 class="ui dividing header">Générateur d'inventaire RCO/CoUA</h4>
+                    <div class="field" data-children-count="1">
+                        <label for="collection">Collections </label>
+                        <select class="ui search dropdown" name="collection" id="collection">
+                            <option value="0" disabled selected>Sélectionner une collection</option>
+                        </select>
+                    </div>
+                    <div class="field" data-children-count="1">
+                        <label for="inventaire">Inventaire</label>
+                        <input type="file" name="inventaire" id="inventaire" accept="text/csv" required>
+                    </div>
+                    <div class="field" data-children-count="1">
+                        <label for="type_doc">Type de document</label>
+                        <select name="type_doc" id="type-doc">
+                            <option value="repertoire">Répertoire trimestriel</option>
+                            <option value="liste">Liste Globale</option>
+                        </select>
+                    </div>
+                    <div class="field disabled" data-children-count="1">
+                        <label for="last-inventaire">Dernier inventaire</label>
+                        <input type="date" name="last-inventaire" id="last-inventaire">
+
+                    </div>
+                    <div class="inline field" data-children-count="1">
+                        <div class="ui checkbox">
+                            <input type="checkbox" name="vigueur-uniquement" id="vigueur-uniquement" checked>
+                            <label for="vigueur-uniquement">Documents en vigueur uniquement
+                            </label>
+                        </div>
+                    </div>
+                    <div class="field" data-children-count="1">
+                        <label for="date_format">Format de date</label>
+                        <select class="ui search dropdown" name="date_format" id="date_format">
+                            <option value="" disabled>Format de date</option>
+                            <option value="DD/MM/YYYY">JJ/MM/AAAA</option>
+                            <option value="DD-MM-YYYY" selected>JJ-MM-AAAA</option>
+                        </select>
+                    </div>
+                    <div class="field" data-children-count="2">
+                        <div class="ui buttons">
+                            <button class="ui button primary" type="submit" id="valider">
+                                Générer</button>
+                            <div class="or" data-text="ou"></div>
+                            <button class="ui button" type="button" id="charger" disabled>
+                                Récupérer mes données enregistrées
+                            </button>
+                        </div>
+                    </div>
+            </form>
         </div>
+    </div>
+    <div class="ui container">
+        <div class="field" data-children-count="5" id="tableau-content">
+            <button class="ui labeled icon button primary small" id="impression"><i class="print icon"></i>Imprimer les
+                éléments
+                visibles</button>
+            <button class="ui labeled icon button secondary small" id="impression-par-classeur"><i
+                    class="print icon"></i>Imprimer par
+                classeur</button>
+            <button class="ui labeled icon button small" id="impression-selection"><i class="print icon"></i>Imprimer
+                sélection</button>
+            <button class="ui labeled icon button orange small" id="telecharger"><i
+                    class="download icon"></i>Télécharger</button>
+            <button class="ui red button labeled icon small" onclick="window.location.reload()"><i
+                    class="redo alternate icon"></i>Autre poste</button>
+
+        </div>
+    </div>
+    <div class="ui container">
+        <div id="table"></div>
+
     </div>
     <script>
         moment.locale('fr');
@@ -90,6 +122,12 @@
         document.getElementById('impression').addEventListener('click', (e) => {
             e.preventDefault()
             table.setGroupBy([(data) => Texte.getClassement(data.index, 1, true), (data) => Texte.getClassement(data.index, 2)])
+            table.print(true, true)
+            table.setGroupBy([(data) => Texte.getClassement(data.index, 1, true), (data) => Texte.getClassement(data.index, 3)])
+        })
+        document.getElementById('impression-par-classeur').addEventListener('click', (e) => {
+            e.preventDefault()
+            table.setGroupBy([(data) => data.classeur == '' || data.classeur == null ? `Hors classeur` : `Classeur ${data.classeur}`, (data) => Texte.getClassement(data.index, 2)])
             table.print(true, true)
             table.setGroupBy([(data) => Texte.getClassement(data.index, 1, true), (data) => Texte.getClassement(data.index, 3)])
         })
@@ -208,8 +246,8 @@
                 data: elems,
                 cellEdited: function (row) {
                     const data = row.getData()
+                    db.textes.put(data)
                     if (row.getField() === "classeur") {
-                        db.textes.put(data)
                         Texte.updateClasseur(data.id, row.getValue())
                     }
                 },
@@ -256,8 +294,8 @@
                             "error": "Erreur",
                         },
                         "groups": {
-                            "item": "élément",
-                            "items": "éléments",
+                            "item": "document",
+                            "items": "documents",
                         },
                         "pagination": {
                             "page_size": "Taille de page",
@@ -316,6 +354,8 @@
             const reader = new FileReader()
 
             const inventaire = document.querySelector('#inventaire')
+            console.log(inventaire.files[0])
+            return
             reader.readAsText(inventaire.files[0], 'Windows-1252')
 
             db.textes.mapToClass(Texte)
@@ -368,6 +408,9 @@
             } else {
                 document.querySelector("#charger").disabled = true
             }
+            db.log.filter(c => c.collection === "ACRI").last().then(doc => {
+                document.getElementById("last-inventaire").value = moment(doc.date).format("YYYY-MM-DD")
+            })
         })
         document.querySelector("#charger").addEventListener("click", (e) => {
             e.preventDefault()
