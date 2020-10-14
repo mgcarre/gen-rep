@@ -53,7 +53,7 @@
                     </div>
                     <div class="field" data-children-count="1">
                         <label for="type_doc">Type de document</label>
-                        <select name="type_doc" id="type-doc">
+                        <select name="type_doc" id="type_doc">
                             <option value="repertoire">Répertoire trimestriel</option>
                             <option value="liste">Liste Globale</option>
                         </select>
@@ -92,7 +92,7 @@
         </div>
     </div>
     <div class="ui container">
-        <div class="field" data-children-count="5" id="tableau-content">
+        <div class="field" data-children-count="6" id="tableau-content">
             <button class="ui labeled icon button primary small" id="impression"><i class="print icon"></i>Imprimer les
                 éléments
                 visibles</button>
@@ -105,7 +105,12 @@
                     class="download icon"></i>Télécharger</button>
             <button class="ui red button labeled icon small" onclick="window.location.reload()"><i
                     class="redo alternate icon"></i>Autre poste</button>
+            <div class="field" data-children-count="1">
+                <label for="liste_postes">Collections :</label>
+                <select name="liste_postes" id="liste_postes">
 
+                </select>
+            </div>
         </div>
     </div>
     <div class="ui container">
@@ -119,6 +124,71 @@
         dateFormat.set("slash", "DD/MM/YYYY")
         dateFormat.set("tiret", "YYYY-MM-DD")
         let table = null
+        const tableColumnsParams = [
+            { title: "Référence", field: "reference", sorter: "alphanum", headerFilter: true, print: true, titlePrint: "Réf.", headerFilter: true },
+            { title: "Index", field: "index", sorter: "string", visible: false, print: true, download: true, widthGrow: 3 },
+            { title: "Titre", field: "titre", sorter: "string", headerFilter: true, print: true, widthGrow: 6 },
+            { title: "Version", field: "version", sorter: "number", hozAlign: "center", print: true, widthShrink: 1 },
+            {
+                title: "Dates",
+                columns: [
+                    {
+                        title: "Version", field: "date_version", hozAlign: "center", formatter: dateFormatter, sorter: ((a, b, aRow, bRow, column, dir, sorterParams) => a - b), print: true
+                    }
+                ]
+            },
+            { title: "Pointage", field: "okReception", hozAlign: "center", editor: true, formatter: "tickCross", download: true, print: false },
+
+        ]
+        const i18nFR = {
+            "fr": {
+                "columns": {
+                    "nom": "Nom",
+                },
+                "ajax": {
+                    "loading": "Chargement",
+                    "error": "Erreur",
+                },
+                "groups": {
+                    "item": "document",
+                    "items": "documents",
+                },
+                "pagination": {
+                    "page_size": "Taille de page",
+                    "page_title": "Voir Page",
+                    "first": "Première",
+                    "first_title": "Première Page",
+                    "last": "Dernière",
+                    "last_title": "Dernière Page",
+                    "prev": "Préc.",
+                    "prev_title": "Page Préc.",
+                    "next": "Suivant",
+                    "next_title": "Page Suiv.",
+                    "all": "Tout",
+                },
+                "headerFilters": {
+                    "default": "filtrer par colonne", //default header filter placeholder text
+                    "columns": {
+                        "name": "filtrer par nom", //replace default header filter text for column name
+                    }
+                }
+            }
+        }
+        const lancer = document.querySelector('#valider')
+        const db = new Dexie("textes_prescription")
+        const planClassement = {
+            "AG": "Affaires générales",
+            "AG+AS": "Approvisionnement et stocks, Marchés et Achats",
+            "CL": "Commercial",
+            "EF": "Equipements fixes",
+            "FC": "Finances et comptabilité",
+            "MG": "Matériel et outillage",
+            "MR": "Matériel roulant",
+            "OG": "Organisation et gestion",
+            "PS": "Personnel et questions sociales",
+            "S": "Sécurité de la circulation",
+            "TR": "Trafic et Exploitation"
+        }
         document.getElementById('impression').addEventListener('click', (e) => {
             e.preventDefault()
             table.setGroupBy([(data) => Texte.getClassement(data.index, 1, true), (data) => Texte.getClassement(data.index, 2)])
@@ -141,19 +211,6 @@
             table.download("xlsx", "data.xlsx", { sheetName: "MyData" })
             table.setGroupBy([(data) => Texte.getClassement(data.index, 1, true), (data) => Texte.getClassement(data.index, 3)])
         })
-        const planClassement = {
-            "AG": "Affaires générales",
-            "AG+AS": "Approvisionnement et stocks, Marchés et Achats",
-            "CL": "Commercial",
-            "EF": "Equipements fixes",
-            "FC": "Finances et comptabilité",
-            "MG": "Matériel et outillage",
-            "MR": "Matériel roulant",
-            "OG": "Organisation et gestion",
-            "PS": "Personnel et questions sociales",
-            "S": "Sécurité de la circulation",
-            "TR": "Trafic et Exploitation"
-        }
         class Texte {
             constructor(texte) {
                 this.reference = texte["Référence"]
@@ -251,22 +308,7 @@
                         Texte.updateClasseur(data.id, row.getValue())
                     }
                 },
-                columns: [
-                    { title: "Référence", field: "reference", sorter: "alphanum", headerFilter: true, print: true, titlePrint: "Réf.", headerFilter: true },
-                    { title: "Index", field: "index", sorter: "string", visible: false, print: true, download: true, widthGrow: 3 },
-                    { title: "Titre", field: "titre", sorter: "string", headerFilter: true, print: true, widthGrow: 6 },
-                    { title: "Version", field: "version", sorter: "number", hozAlign: "center", print: true, widthShrink: 1 },
-                    {
-                        title: "Dates",
-                        columns: [
-                            {
-                                title: "Version", field: "date_version", hozAlign: "center", formatter: dateFormatter, sorter: ((a, b, aRow, bRow, column, dir, sorterParams) => a - b), print: true
-                            }
-                        ]
-                    },
-                    { title: "Pointage", field: "okReception", hozAlign: "center", editor: true, formatter: "tickCross", download: true, print: false },
-
-                ],
+                columns: tableColumnsParams,
                 placeholder: "Aucun élément disponible",
                 pagination: "local",
                 initialSort: [
@@ -284,40 +326,7 @@
                 tabEndNewRow: true,
                 selectablePersistence: true,
                 locale: true,
-                langs: {
-                    "fr": {
-                        "columns": {
-                            "nom": "Nom",
-                        },
-                        "ajax": {
-                            "loading": "Chargement",
-                            "error": "Erreur",
-                        },
-                        "groups": {
-                            "item": "document",
-                            "items": "documents",
-                        },
-                        "pagination": {
-                            "page_size": "Taille de page",
-                            "page_title": "Voir Page",
-                            "first": "Première",
-                            "first_title": "Première Page",
-                            "last": "Dernière",
-                            "last_title": "Dernière Page",
-                            "prev": "Préc.",
-                            "prev_title": "Page Préc.",
-                            "next": "Suivant",
-                            "next_title": "Page Suiv.",
-                            "all": "Tout",
-                        },
-                        "headerFilters": {
-                            "default": "filtrer par colonne", //default header filter placeholder text
-                            "columns": {
-                                "name": "filtrer par nom", //replace default header filter text for column name
-                            }
-                        }
-                    }
-                },
+                langs: i18nFR
             });
             table.addColumn({
                 title: "Classeur", editor: "textarea", field: "classeur", download: true, print: true, editableTitle: false, editorParams: {
@@ -325,8 +334,6 @@
                 }
             })
         }
-        const lancer = document.querySelector('#valider')
-        const db = new Dexie("textes_prescription")
         db.version(1).stores({
             textes: "++id,&[reference+version+date_version]",
             collections: "&titre",
@@ -435,6 +442,31 @@
                 })
             })
         }
+        async function afficherPostesEnregistres() {
+            const coll = new Map()
+            const postes = await db.relations.each(col => coll.set(col.collection, col.collection))
+            const listePostes = document.getElementById('liste_postes')
+            coll.forEach(poste => {
+                const opt = document.createElement('option')
+                opt.value = poste
+                opt.innerText = poste
+                listePostes.appendChild(opt)
+                if (selectedCollection.value === poste) {
+                    listePostes.value = poste
+                    opt.selected = true
+                }
+            })
+            listePostes.addEventListener('change', (e) => {
+                if (listePostes.value === selectedCollection.value) {
+                    return
+                } else {
+                    selectedCollection.value = listePostes.value
+                    ChargementTableau()
+                }
+
+            })
+        }
+        afficherPostesEnregistres()
     </script>
 </body>
 
