@@ -89,6 +89,10 @@
                         </div>
                     </div>
             </form>
+            <div id="avertissement" class="ui error message">
+                <div class="header">Impossible de continuer</div>
+                <p>Le générateur est bloqué suite à un défaut de chargement des données.</p>
+            </div>
         </div>
     </div>
     <div class="ui container">
@@ -138,7 +142,11 @@
                 ]
             },
             { title: "Pointage", field: "okReception", hozAlign: "center", editor: true, formatter: "tickCross", download: true, print: false },
-
+            {
+                title: "Classeur", editor: "textarea", field: "classeur", download: true, print: true, editableTitle: false, editorParams: {
+                    verticalNavigation: "editor"
+                }
+            }
         ]
         const i18nFR = {
             "fr": {
@@ -167,9 +175,9 @@
                     "all": "Tout",
                 },
                 "headerFilters": {
-                    "default": "filtrer par colonne", //default header filter placeholder text
+                    "default": "filtrer par colonne",
                     "columns": {
-                        "name": "filtrer par nom", //replace default header filter text for column name
+                        "name": "filtrer par nom",
                     }
                 }
             }
@@ -207,7 +215,7 @@
         })
         document.getElementById('telecharger').addEventListener('click', (e) => {
             e.preventDefault()
-            table.setGroupBy([(data) => Texte.getClassement(data.index, 3)])
+            table.setGroupBy()
             table.download("xlsx", "data.xlsx", { sheetName: "MyData" })
             table.setGroupBy([(data) => Texte.getClassement(data.index, 1, true), (data) => Texte.getClassement(data.index, 3)])
         })
@@ -242,7 +250,6 @@
                 this.commentaires = ""
                 this.okReception = true
                 this.classeur = null
-                this.getClasseur()
             }
             estApplicable() {
                 return this.etat === "Vigueur" && this.rectif_abrogatoire === false
@@ -282,16 +289,18 @@
         }
 
         function getHeader() {
-            return `<h1>${document.querySelector('#type-doc option:checked').textContent}<h1><h3>Collection ${document.querySelector('#collection').value}</h3>`
+            return `<h1>${document.querySelector('#type_doc option:checked').textContent}<h1><h3>Collection ${document.querySelector('#collection').value}</h3>`
         }
         function getFooter() {
             const date = new Date()
-            return `<h4>${document.querySelector('#type-doc option:checked').textContent} généré le ${date.toLocaleDateString()} à ${date.toLocaleTimeString()}</h4>`
+            return `<h4>${document.querySelector('#type_doc option:checked').textContent} généré le ${date.toLocaleDateString()} à ${date.toLocaleTimeString()}</h4>`
         }
         async function ChargementTableau() {
             const collections = await db.relations.where("collection").equals(selectedCollection.value).toArray()
             let elems = await Promise.all(collections.map(async collection => {
-                return await db.textes.get(collection.texteId)
+                const doc = await db.textes.get(collection.texteId)
+                doc.classeur = collection.classeur
+                return doc
             }))
             if (document.querySelector("#vigueur-uniquement").checked === true) {
                 elems = elems.filter(texte => texte.etat === "Vigueur" && texte.rectif_abrogatoire === false)
@@ -303,7 +312,7 @@
                 data: elems,
                 cellEdited: function (row) {
                     const data = row.getData()
-                    db.textes.put(data)
+                    // db.textes.put(data)
                     if (row.getField() === "classeur") {
                         Texte.updateClasseur(data.id, row.getValue())
                     }
@@ -328,11 +337,6 @@
                 locale: true,
                 langs: i18nFR
             });
-            table.addColumn({
-                title: "Classeur", editor: "textarea", field: "classeur", download: true, print: true, editableTitle: false, editorParams: {
-                    verticalNavigation: "editor"
-                }
-            })
         }
         db.version(1).stores({
             textes: "++id,&[reference+version+date_version]",
@@ -359,12 +363,9 @@
             e.preventDefault()
 
             const reader = new FileReader()
-
             const inventaire = document.querySelector('#inventaire')
-            console.log(inventaire.files[0])
-            return
-            reader.readAsText(inventaire.files[0], 'Windows-1252')
 
+            reader.readAsText(inventaire.files[0], 'Windows-1252')
             db.textes.mapToClass(Texte)
 
             reader.onload = function () {
@@ -405,6 +406,7 @@
         lancer.addEventListener('click', (e) => {
             e.preventDefault()
             db.log.put({ date: new Date(), collection: selectedCollection.value })
+            afficherPostesEnregistres()
             ChargementTableau()
         })
         selectedCollection.addEventListener("change", async (e) => {
@@ -415,12 +417,13 @@
             } else {
                 document.querySelector("#charger").disabled = true
             }
-            db.log.filter(c => c.collection === "ACRI").last().then(doc => {
+            db.log.filter(c => c.collection === selectedCollection.value).last().then(doc => {
                 document.getElementById("last-inventaire").value = moment(doc.date).format("YYYY-MM-DD")
             })
         })
         document.querySelector("#charger").addEventListener("click", (e) => {
             e.preventDefault()
+            afficherPostesEnregistres()
             ChargementTableau()
         })
         function revelerTableau() {
@@ -444,17 +447,23 @@
         }
         async function afficherPostesEnregistres() {
             const coll = new Map()
-            const postes = await db.relations.each(col => coll.set(col.collection, col.collection))
             const listePostes = document.getElementById('liste_postes')
+            await db.relations.each(col => coll.set(col.collection, col.collection))
+            if (coll.size === 0) {
+                listePostes.classList.add('disabled')
+                return
+            } else {
+                masquerAvertissement()
+            }
             coll.forEach(poste => {
                 const opt = document.createElement('option')
                 opt.value = poste
                 opt.innerText = poste
-                listePostes.appendChild(opt)
                 if (selectedCollection.value === poste) {
                     listePostes.value = poste
                     opt.selected = true
                 }
+                listePostes.appendChild(opt)
             })
             listePostes.addEventListener('change', (e) => {
                 if (listePostes.value === selectedCollection.value) {
@@ -466,7 +475,20 @@
 
             })
         }
-        afficherPostesEnregistres()
+        function masquerAvertissement() {
+            document.getElementById("avertissement").classList.add("hidden")
+        }
+        async function verifConnexion() {
+            const coll = new Map()
+            await db.relations.each(col => coll.set(col.collection, col.collection))
+            if (coll.size === 0) {
+                listePostes.classList.add('disabled')
+                return
+            } else {
+                masquerAvertissement()
+            }
+        }
+        verifConnexion()
     </script>
 </body>
 
