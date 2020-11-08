@@ -128,6 +128,7 @@
         dateFormat.set("slash", "DD/MM/YYYY")
         dateFormat.set("tiret", "YYYY-MM-DD")
         let table = null
+        const listePostes = document.getElementById('liste_postes')
         const tableColumnsParams = [
             { title: "Référence", field: "reference", sorter: "alphanum", headerFilter: true, print: true, titlePrint: "Réf.", headerFilter: true },
             { title: "Index", field: "index", sorter: "string", visible: false, print: true, download: true, widthGrow: 3 },
@@ -447,7 +448,6 @@
         }
         async function afficherPostesEnregistres() {
             const coll = new Map()
-            const listePostes = document.getElementById('liste_postes')
             await db.relations.each(col => coll.set(col.collection, col.collection))
             if (coll.size === 0) {
                 listePostes.classList.add('disabled')
