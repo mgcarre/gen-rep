@@ -131,7 +131,7 @@
         const listePostes = document.getElementById('liste_postes')
         const tableColumnsParams = [
             { title: "Référence", field: "reference", sorter: "alphanum", headerFilter: true, print: true, titlePrint: "Réf.", headerFilter: true },
-            { title: "Index", field: "index", sorter: "string", visible: false, print: true, download: true, widthGrow: 3 },
+            { title: "Index", field: "index", sorter: "string", visible: true, print: true, download: true },
             { title: "Titre", field: "titre", sorter: "string", headerFilter: true, print: true, widthGrow: 6 },
             { title: "Version", field: "version", sorter: "number", hozAlign: "center", print: true, widthShrink: 1 },
             {
@@ -139,6 +139,12 @@
                 columns: [
                     {
                         title: "Version", field: "date_version", hozAlign: "center", formatter: dateFormatter, sorter: ((a, b, aRow, bRow, column, dir, sorterParams) => a - b), print: true
+                    },
+                    {
+                        title: "Edition", field: "date_edition", hozAlign: "center", formatter: dateFormatter, sorter: ((a, b, aRow, bRow, column, dir, sorterParams) => a - b), print: true
+                    },
+                    {
+                        title: "Application", field: "date_application", hozAlign: "center", formatter: dateFormatter, sorter: ((a, b, aRow, bRow, column, dir, sorterParams) => a - b), print: true
                     }
                 ]
             },
@@ -290,7 +296,7 @@
         }
 
         function getHeader() {
-            return `<h1>${document.querySelector('#type_doc option:checked').textContent}<h1><h3>Collection ${document.querySelector('#collection').value}</h3>`
+            return `<h1 class="ui header">${document.querySelector('#type_doc option:checked').textContent}<div class="sub header">Collection ${document.querySelector('#collection').value}</div></h1>`
         }
         function getFooter() {
             const date = new Date()
@@ -324,6 +330,7 @@
                 initialSort: [
                     { column: "index", dir: "asc" }
                 ],
+                // movableRows: true,
                 movableColumns: true,
                 paginationSize: true,
                 paginationSizeSelector: [25, 50, 100, 250, true],
