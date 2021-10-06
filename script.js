@@ -24,9 +24,16 @@ const tableColumnsParams = [
             }
         ]
     },
+    {
+        title: "Exemplaires",
+        columns: [
+            { title: "Papier", field: "quantite_papier", sorter: "number", download: false, print: true, bottomCalc: "sum", hozAlign: "center" },
+            { title: "Démat.", field: "quantite_intranet", sorter: "number", download: false, print: true, bottomCalc: "sum", hozAlign: "center" },
+        ]
+    },
     { title: "Pointage", field: "okReception", hozAlign: "center", editor: true, formatter: "tickCross", download: true, print: false },
     {
-        title: "Classeur", editor: "textarea", field: "classeur", download: true, print: true, editableTitle: false, editorParams: {
+        title: "Classeur", editor: "number", sorter: "number", field: "classeur", download: true, print: true, editableTitle: false, editorParams: {
             verticalNavigation: "editor"
         }
     }
@@ -165,7 +172,7 @@ function dateFormatter(cell, formatterParams, onRendered) {
     if (!cell.getValue()) { return "" }
     const date = moment(cell.getValue())
     if (!date.isValid()) {
-        console.log(cell.getValue())
+        // console.log(cell.getValue())
         return "Dès réception"
     }
     return date.format(document.getElementById("date_format").value)
@@ -228,9 +235,10 @@ db.version(1).stores({
     relations: "++, texteId, collection",
     log: "++id, date"
 })
-const collections = await fetch('https://c.json').then(async (res) => await res.json())
 async function c() {
-    collections.forEach(async el => await db.collections.put({ titre: el }))
+    const collections = await fetch('c.json').then(async (res) => await res.json()).then(r => r.map(e => ({ titre: e })))
+    await db.collections.bulkPut(collections)
+    // collections.forEach(async el => await db.collections.put({ titre: el }))
 
     db.collections.toArray().then(colls => {
         colls.forEach(coll => {
@@ -288,6 +296,7 @@ document.querySelector("#inventaire").addEventListener("change", (e) => {
 })
 
 lancer.addEventListener('click', (e) => {
+    showLoader()
     e.preventDefault()
     db.log.put({ date: new Date(), collection: selectedCollection.value })
     afficherPostesEnregistres()
@@ -306,6 +315,7 @@ selectedCollection.addEventListener("change", async (e) => {
     })
 })
 document.querySelector("#charger").addEventListener("click", (e) => {
+    showLoader()
     e.preventDefault()
     afficherPostesEnregistres()
     ChargementTableau()
@@ -313,6 +323,7 @@ document.querySelector("#charger").addEventListener("click", (e) => {
 function revelerTableau() {
     document.getElementById('form-tableau').hidden = true
     document.getElementById('tableau-content').style.visibility = "visible"
+    hideLoader()
 }
 async function nettoyerDb(values) {
     const refs = values.map(t => t.Référence).filter(t => t !== null)
@@ -349,6 +360,7 @@ async function afficherPostesEnregistres() {
         listePostes.appendChild(opt)
     })
     listePostes.addEventListener('change', (e) => {
+        showLoader()
         if (listePostes.value === selectedCollection.value) {
             return
         } else {
@@ -360,6 +372,12 @@ async function afficherPostesEnregistres() {
 }
 function masquerAvertissement() {
     document.getElementById("avertissement").classList.add("hidden")
+}
+function showLoader() {
+    document.getElementById("loader").classList.add("active")
+}
+function hideLoader() {
+    document.getElementById("loader").classList.remove("active")
 }
 async function verifConnexion() {
     const coll = new Map()

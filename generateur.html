@@ -17,91 +17,106 @@
 </head>
 
 <body>
-    <div class="ui container">
+    <div class="ui">
+        <div class="ui dimmer" id="loader">
+            <div class="ui indeterminate text loader">Préparation des données</div>
+        </div>
+        <p></p>
+    </div>
+    <div class="ui grid container">
         <div class="row">
-            <form class="ui form no-print" id="form-tableau">
-                <h3 class="ui dividing header">Générateur d'inventaire RCO/CoUA</h4>
-                    <div class="field" data-children-count="1">
-                        <label for="collection">Collections </label>
-                        <select class="ui search dropdown" name="collection" id="collection">
-                            <option value="0" disabled selected>Sélectionner une collection</option>
-                        </select>
-                    </div>
-                    <div class="field" data-children-count="1">
-                        <label for="inventaire">Inventaire</label>
-                        <input type="file" name="inventaire" id="inventaire" accept="text/csv" required>
-                    </div>
-                    <div class="field" data-children-count="1">
-                        <label for="type_doc">Type de document</label>
-                        <select name="type_doc" id="type_doc">
-                            <option value="repertoire">Répertoire trimestriel</option>
-                            <option value="liste">Liste Globale</option>
-                        </select>
-                    </div>
-                    <div class="field disabled" data-children-count="1">
-                        <label for="last-inventaire">Dernier inventaire</label>
-                        <input type="date" name="last-inventaire" id="last-inventaire">
+            <div class="two wide column"></div>
+            <div class="twelve wide column">
+                <form class="ui form no-print" id="form-tableau">
+                    <h1 class="ui dividing header">Générateur d'inventaire RCO/CoUA</h4>
+                        <div class="field" data-children-count="1">
+                            <label for="collection">Collections </label>
+                            <select class="ui search dropdown" name="collection" id="collection">
+                                <option value="0" disabled selected>Sélectionner une collection</option>
+                            </select>
+                        </div>
+                        <div class="field" data-children-count="1">
+                            <label for="inventaire">Inventaire</label>
+                            <input type="file" name="inventaire" id="inventaire" accept="text/csv" required>
+                        </div>
+                        <div class="field" data-children-count="1">
+                            <label for="type_doc">Type de document</label>
+                            <select name="type_doc" id="type_doc">
+                                <option value="repertoire">Répertoire trimestriel</option>
+                                <option value="liste">Liste Globale</option>
+                            </select>
+                        </div>
+                        <div class="field disabled" data-children-count="1">
+                            <label for="last-inventaire">Dernier inventaire</label>
+                            <input type="date" name="last-inventaire" id="last-inventaire">
 
-                    </div>
-                    <div class="inline field" data-children-count="1">
-                        <div class="ui checkbox">
-                            <input type="checkbox" name="vigueur-uniquement" id="vigueur-uniquement" checked>
-                            <label for="vigueur-uniquement">Documents en vigueur uniquement
-                            </label>
                         </div>
-                    </div>
+                        <div class="inline field" data-children-count="1">
+                            <div class="ui checkbox">
+                                <input type="checkbox" name="vigueur-uniquement" id="vigueur-uniquement" checked>
+                                <label for="vigueur-uniquement">Documents en vigueur uniquement
+                                </label>
+                            </div>
+                        </div>
+                        <div class="field" data-children-count="1">
+                            <label for="date_format">Format de date</label>
+                            <select class="ui search dropdown" name="date_format" id="date_format">
+                                <option value="" disabled>Format de date</option>
+                                <option value="DD/MM/YYYY">JJ/MM/AAAA</option>
+                                <option value="DD-MM-YYYY" selected>JJ-MM-AAAA</option>
+                            </select>
+                        </div>
+                        <div class="field" data-children-count="2">
+                            <div class="ui buttons">
+                                <button class="ui button primary" type="submit" id="valider">
+                                    Générer</button>
+                                <div class="or" data-text="ou"></div>
+                                <button class="ui button" type="button" id="charger" disabled>
+                                    Récupérer mes données enregistrées
+                                </button>
+                            </div>
+                        </div>
+                </form>
+                <div id="avertissement" class="ui error message">
+                    <div class="header">Impossible de continuer</div>
+                    <p>Le générateur est bloqué suite à un défaut de chargement des données.</p>
+                </div>
+            </div>
+            <div class="two wide column"></div>
+        </div>
+        <div class="row">
+            <div class="column">
+                <div class="field" data-children-count="6" id="tableau-content">
+                    <button class="ui labeled icon button primary small" id="impression"><i
+                            class="print icon"></i>Imprimer les
+                        éléments
+                        visibles</button>
+                    <button class="ui labeled icon button secondary small" id="impression-par-classeur"><i
+                            class="print icon"></i>Imprimer par
+                        classeur</button>
+                    <button class="ui labeled icon button small" id="impression-selection"><i
+                            class="print icon"></i>Imprimer
+                        sélection</button>
+                    <button class="ui labeled icon button orange small" id="telecharger"><i
+                            class="download icon"></i>Télécharger</button>
+                    <button class="ui red button labeled icon small" onclick="window.location.reload()"><i
+                            class="redo alternate icon"></i>Autre poste</button>
                     <div class="field" data-children-count="1">
-                        <label for="date_format">Format de date</label>
-                        <select class="ui search dropdown" name="date_format" id="date_format">
-                            <option value="" disabled>Format de date</option>
-                            <option value="DD/MM/YYYY">JJ/MM/AAAA</option>
-                            <option value="DD-MM-YYYY" selected>JJ-MM-AAAA</option>
+                        <label for="liste_postes">Collections :</label>
+                        <select name="liste_postes" id="liste_postes">
+
                         </select>
                     </div>
-                    <div class="field" data-children-count="2">
-                        <div class="ui buttons">
-                            <button class="ui button primary" type="submit" id="valider">
-                                Générer</button>
-                            <div class="or" data-text="ou"></div>
-                            <button class="ui button" type="button" id="charger" disabled>
-                                Récupérer mes données enregistrées
-                            </button>
-                        </div>
-                    </div>
-            </form>
-            <div id="avertissement" class="ui error message">
-                <div class="header">Impossible de continuer</div>
-                <p>Le générateur est bloqué suite à un défaut de chargement des données.</p>
+                </div>
             </div>
         </div>
-    </div>
-    <div class="ui container">
-        <div class="field" data-children-count="6" id="tableau-content">
-            <button class="ui labeled icon button primary small" id="impression"><i class="print icon"></i>Imprimer les
-                éléments
-                visibles</button>
-            <button class="ui labeled icon button secondary small" id="impression-par-classeur"><i
-                    class="print icon"></i>Imprimer par
-                classeur</button>
-            <button class="ui labeled icon button small" id="impression-selection"><i class="print icon"></i>Imprimer
-                sélection</button>
-            <button class="ui labeled icon button orange small" id="telecharger"><i
-                    class="download icon"></i>Télécharger</button>
-            <button class="ui red button labeled icon small" onclick="window.location.reload()"><i
-                    class="redo alternate icon"></i>Autre poste</button>
-            <div class="field" data-children-count="1">
-                <label for="liste_postes">Collections :</label>
-                <select name="liste_postes" id="liste_postes">
+        <div class="row">
+            <div class="column">
+                <div id="table"></div>
 
-                </select>
             </div>
         </div>
-    </div>
-    <div class="ui container">
-        <div id="table"></div>
-
-    </div>
-    <script src="script.js"></script>
+        <script src="script.js"></script>
 </body>
 
 </html>
