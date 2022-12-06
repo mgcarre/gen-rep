@@ -35,6 +35,10 @@ const tableColumnsParams = [
     {
         title: "Classeur", editor: "number", sorter: "number", field: "classeur", download: true, print: true, editableTitle: false, editorParams: {
             verticalNavigation: "editor"
+        },
+        cellEdited: function (cell) {
+            const data = cell.getData()
+            Texte.updateClasseur(data.id, data.classeur)
         }
     }
 ]
@@ -106,7 +110,7 @@ document.getElementById('impression-selection').addEventListener('click', (e) =>
 document.getElementById('telecharger').addEventListener('click', (e) => {
     e.preventDefault()
     table.setGroupBy()
-    table.download("xlsx", "data.xlsx", { sheetName: "MyData" })
+    table.download("xlsx", `${getFileName()}.xlsx`, { sheetName: "MyData" })
     table.setGroupBy([(data) => Texte.getClassement(data.index, 1, true), (data) => Texte.getClassement(data.index, 3)])
 })
 class Texte {
@@ -177,13 +181,22 @@ function dateFormatter(cell, formatterParams, onRendered) {
     }
     return date.format(document.getElementById("date_format").value)
 }
-
+function getCollectionTitle() {
+    return {
+        type: document.querySelector('#type_doc option:checked').textContent,
+        collection: document.querySelector('#collection').value
+    }
+}
+function getFileName() {
+    const reg = new RegExp(`[\\/:"*?<>|]+`)
+    return getCollectionTitle().collection.replace(' ', '-').replace(reg, '.')
+}
 function getHeader() {
-    return `<h1 class="ui header">${document.querySelector('#type_doc option:checked').textContent}<div class="sub header">Collection ${document.querySelector('#collection').value}</div></h1>`
+    return `<h1 class="ui header">${getCollectionTitle().type}<div class="sub header">Collection ${getCollectionTitle().collection}</div></h1>`
 }
 function getFooter() {
     const date = new Date()
-    return `<h4>${document.querySelector('#type_doc option:checked').textContent} généré le ${date.toLocaleDateString()} à ${date.toLocaleTimeString()}</h4>`
+    return `<h4>${getCollectionTitle().type} généré le ${date.toLocaleDateString()} à ${date.toLocaleTimeString()}</h4>`
 }
 async function ChargementTableau() {
     const collections = await db.relations.where("collection").equals(selectedCollection.value).toArray()
@@ -200,13 +213,6 @@ async function ChargementTableau() {
         groupBy: [(data) => Texte.getClassement(data.index, 1, true), (data) => Texte.getClassement(data.index, 3)],
         reactiveData: true,
         data: elems,
-        cellEdited: function (row) {
-            const data = row.getData()
-            // db.textes.put(data)
-            if (row.getField() === "classeur") {
-                Texte.updateClasseur(data.id, row.getValue())
-            }
-        },
         columns: tableColumnsParams,
         placeholder: "Aucun élément disponible",
         pagination: "local",
